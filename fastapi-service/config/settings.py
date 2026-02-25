@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     vision_predict_path: Path = Path(__file__).parent.parent.parent / "vision-predict"
     segmentation_model_name: str = "swim_trasnformer_384.pth"
     classification_model_name: str = "Simple_convnext_base_fold3.pth"
+    # 即時偵測用的舌頭偵測模型（預設放在 vision-predict 目錄底下）
+    tongue_detector_model_name: str = "best.pt"
     
     # API 設定
     api_host: str = "0.0.0.0"

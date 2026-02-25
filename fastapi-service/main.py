@@ -25,6 +25,7 @@ from routes import (
     set_agents, 
     set_vision_loader
 )
+from realtime_router import router as realtime_router
 
 # 初始化資料庫 (建立 Table)
 Base.metadata.create_all(bind=engine)
@@ -75,6 +76,7 @@ app.include_router(chat_router, prefix="/chat", tags=["Chat"])
 app.include_router(tongue_router, prefix="/tongue", tags=["Tongue Analysis"])
 app.include_router(agent_router, prefix="/agent", tags=["Agent"])
 app.include_router(memory_router, prefix="/memory", tags=["Memory"])
+app.include_router(realtime_router, tags=["Realtime"])
 
 # ==================== Existing Simple Endpoints ====================
 
