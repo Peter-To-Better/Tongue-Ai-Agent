@@ -23,6 +23,57 @@ const isElectron = () => {
 
 const FASTAPI_URL = "http://localhost:8000";
 
+// ========= Realtime Frame 分析 =========
+
+export interface RealtimeBoxResult {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  status: string;
+  ratio: number;
+  aspect_ratio: number;
+  touching_edge: boolean;
+}
+
+export interface RealtimeFrameResult {
+  ok: boolean;
+  reason: string;
+  boxes: RealtimeBoxResult[];
+}
+
+export const analyzeRealtimeFrame = async (
+  imageBlob: Blob
+): Promise<RealtimeFrameResult> => {
+  const formData = new FormData();
+  formData.append("file", imageBlob, "frame.jpg");
+
+  const response = await fetch(`${FASTAPI_URL}/realtime/analyze-frame`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let errorMessage = `即時偵測 API 失敗 (狀態碼: ${response.status})`;
+    try {
+      const errorText = await response.text();
+      if (errorText) {
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.detail || errorData.error || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    throw new Error(errorMessage);
+  }
+
+  return (await response.json()) as RealtimeFrameResult;
+};
+
 const makeBrowserRequest = async (
   message: PromptRequest
 ): Promise<PromptResponse> => {
