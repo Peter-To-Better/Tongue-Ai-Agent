@@ -10,11 +10,11 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.7
     
     # Vision-Predict 設定
-    # vision-predict 目錄位於專案根目錄（fastapi-service 的上一層）
-    vision_predict_path: Path = Path(__file__).parent.parent.parent / "vision-predict"
+    # vision_predict 套件位於 backend/vision_predict/
+    vision_predict_path: Path = Path(__file__).parent.parent / "vision_predict"
     segmentation_model_name: str = "swim_trasnformer_384.pth"
     classification_model_name: str = "Simple_convnext_base_fold3.pth"
-    # 即時偵測用的舌頭偵測模型（預設放在 vision-predict 目錄底下）
+    # 即時偵測用的舌頭偵測模型（放在 backend/vision_predict/ 目錄底下）
     tongue_detector_model_name: str = "best.pt"
     
     # API 設定

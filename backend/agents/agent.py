@@ -14,6 +14,7 @@ from config.settings import settings
 from config.prompts import PromptTemplates
 from utils.vision_loader import VisionPredictLoader
 from utils.memory_manager import get_memory_manager
+from agents.message_helpers import build_system_message
 
 # 定義 Agent 狀態
 class AgentState(TypedDict):
@@ -144,16 +145,11 @@ def agent_node(state: AgentState) -> AgentState:
     # 如果沒有系統消息，添加系統提示詞
     has_system_message = any(isinstance(msg, SystemMessage) for msg in messages)
     if not has_system_message:
-        system_prompt = PromptTemplates.TOOL_AGENT_SYSTEM.format(
+        base_prompt = PromptTemplates.TOOL_AGENT_SYSTEM.format(
             allowed_topics=PromptTemplates.ALLOWED_TOPICS
         )
-        
-        # 如果有記憶上下文，添加到系統提示詞中
-        memory_context = state.get("memory_context")
-        if memory_context:
-            system_prompt += f"\n\n===== 以下是關於用戶的歷史資料 =====\n{memory_context}\n===== 用戶資料結束 ====="
-        
-        messages = [SystemMessage(content=system_prompt)] + messages
+        system_msg = build_system_message(base_prompt, state.get("memory_context"))
+        messages = [system_msg] + messages
     
     # 調用 LLM（帶工具）
     llm_with_tools = _get_llm_with_tools()
@@ -267,18 +263,11 @@ def chat_node(state: AgentState) -> AgentState:
     
     # 如果沒有系統消息，添加系統提示詞（只在第一次會話時）
     if not has_system_message:
-        system_content = PromptTemplates.CHAT_SYSTEM.format(
+        base_prompt = PromptTemplates.CHAT_SYSTEM.format(
             allowed_topics=PromptTemplates.ALLOWED_TOPICS
         )
-
-        memory_context = state.get("memory_context")
-        if memory_context:
-            system_content += f"\n\n===== 以下是關於用戶的歷史資料 =====\n{memory_context}\n===== 用戶資料結束 ====="
-        
-        # 創建系統消息並添加到返回列表（這樣會被 checkpointer 保存）
-        system_msg = SystemMessage(content=system_content)
+        system_msg = build_system_message(base_prompt, state.get("memory_context"))
         messages_to_return.append(system_msg)
-        # 將系統消息添加到消息列表開頭以便 LLM 使用
         messages = [system_msg] + messages
     
     # 調用 LLM（使用完整的消息歷史，checkpointer 會自動管理）
