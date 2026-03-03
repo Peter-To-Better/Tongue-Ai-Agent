@@ -16,6 +16,9 @@ from utils.vision_loader import VisionPredictLoader
 from utils.memory_manager import get_memory_manager
 from agents.message_helpers import build_system_message
 
+import logging
+logger = logging.getLogger(__name__)
+
 # 定義 Agent 狀態
 class AgentState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
@@ -41,15 +44,87 @@ _llm_with_tools = None
 _vision_loader = None
 
 
+def _resolve_device() -> str:
+    """自動偵測最佳裝置。
+    設定為 "auto" 時：CUDA > MPS (Apple Silicon) > CPU
+    """
+    import torch
+    device = settings.hf_device
+    if device != "auto":
+        return device
+    if torch.cuda.is_available():
+        return "cuda"
+    if torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
+def _create_hf_llm():
+    """初始化 HuggingFace 本地模型（供 Jetson 或有 GPU/MPS 的裝置使用）。
+
+    注意：MPS (Apple Silicon) 不支援 device_map 參數，需要手動 .to("mps")。
+    CUDA / CPU 則使用 device_map 讓 accelerate 自動分配。
+    """
+    import torch
+    from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline as hf_pipeline
+    from langchain_huggingface import HuggingFacePipeline, ChatHuggingFace
+
+    device = _resolve_device()
+    logger.info(f"載入 HuggingFace 模型：{settings.hf_model_name}（裝置：{device}）")
+
+    tokenizer = AutoTokenizer.from_pretrained(settings.hf_model_name)
+
+    if device == "mps":
+        # MPS 不支援 device_map，需手動搬移
+        model = AutoModelForCausalLM.from_pretrained(
+            settings.hf_model_name,
+            torch_dtype=torch.float16,
+        ).to("mps")
+        pipe = hf_pipeline(
+            "text-generation",
+            model=model,
+            tokenizer=tokenizer,
+            max_new_tokens=settings.hf_max_new_tokens,
+            temperature=settings.llm_temperature,
+            do_sample=True,
+            return_full_text=False,
+            device="mps",
+        )
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+            settings.hf_model_name,
+            torch_dtype=torch.float16,
+            device_map=device,
+        )
+        pipe = hf_pipeline(
+            "text-generation",
+            model=model,
+            tokenizer=tokenizer,
+            max_new_tokens=settings.hf_max_new_tokens,
+            temperature=settings.llm_temperature,
+            do_sample=True,
+            return_full_text=False,
+        )
+
+    logger.info("HuggingFace 模型載入完成")
+    return ChatHuggingFace(llm=HuggingFacePipeline(pipeline=pipe, streaming=True))
+
+
 def _get_llm():
-    """獲取 LLM 實例（單例模式）"""
+    """獲取 LLM 實例（單例模式）。
+    llm_backend = "ollama"      → ChatOllama（開發用，Mac M1）
+    llm_backend = "huggingface" → ChatHuggingFace（部署用，Jetson AGX Orin）
+    """
     global _llm
     if _llm is None:
-        _llm = ChatOllama(
-            model=settings.model_name,
-            base_url=settings.ollama_base_url,
-            temperature=settings.llm_temperature,
-        )
+        if settings.llm_backend == "huggingface":
+            _llm = _create_hf_llm()
+        else:
+            _llm = ChatOllama(
+                model=settings.model_name,
+                base_url=settings.ollama_base_url,
+                temperature=settings.llm_temperature,
+            )
     return _llm
 
 

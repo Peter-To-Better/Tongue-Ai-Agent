@@ -4,10 +4,19 @@ from pathlib import Path
 from typing import Optional
 
 class Settings(BaseSettings):
-    # LLM 設定
+    # LLM 後端選擇："ollama" 或 "huggingface"
+    llm_backend: str = "ollama"
+
+    # Ollama 設定
     model_name: str = "qwen3:8b"
     ollama_base_url: str = "http://localhost:11434"
     llm_temperature: float = 0.7
+
+    # HuggingFace 設定（用於 BianCang 等本地 HF 模型）
+    hf_model_name: str = "QLU-NLP/BianCang-Qwen2.5-7B-Instruct"
+    hf_max_new_tokens: int = 2048
+    # "auto" 會自動選擇裝置：Jetson/NVIDIA → cuda，Mac M1 → mps，其餘 → cpu
+    hf_device: str = "auto"
     
     # Vision-Predict 設定
     # vision_predict 套件位於 backend/vision_predict/
