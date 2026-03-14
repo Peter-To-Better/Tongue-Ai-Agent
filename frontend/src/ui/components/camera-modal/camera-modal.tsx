@@ -16,7 +16,10 @@ const CameraModal = ({ isOpen, onClose, onCapture }: CameraModalProps) => {
   const goodStartTimeRef = useRef<number | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [statusText, setStatusText] = useState<string>("請將舌頭對準鏡頭，系統會自動偵測最佳畫面");
+  const [statusText, setStatusText] = useState<string>(
+    "請將舌頭對準鏡頭，系統會自動偵測最佳畫面",
+  );
+  const [statusColor, setStatusColor] = useState<string>("#6b7280");
 
   const GOOD_HOLD_SECONDS = 1.5; // 持續幾秒偵測良好後自動截圖
 
@@ -28,6 +31,7 @@ const CameraModal = ({ isOpen, onClose, onCapture }: CameraModalProps) => {
       setCapturedImage(null);
       setError(null);
       setStatusText("請將舌頭對準鏡頭，系統會自動偵測最佳畫面");
+      setStatusColor("#6b7280");
       goodStartTimeRef.current = null;
     }
 
@@ -50,12 +54,12 @@ const CameraModal = ({ isOpen, onClose, onCapture }: CameraModalProps) => {
         video: {
           facingMode: { ideal: "environment" },
           width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
+          height: { ideal: 720 },
+        },
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
@@ -68,19 +72,31 @@ const CameraModal = ({ isOpen, onClose, onCapture }: CameraModalProps) => {
       }
     } catch (err: any) {
       console.error("無法訪問攝像頭:", err);
-      
+
       let errorMessage = "無法訪問攝像頭。";
-      
-      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+
+      if (
+        err.name === "NotAllowedError" ||
+        err.name === "PermissionDeniedError"
+      ) {
         errorMessage = "攝像頭權限被拒絕。請在系統設置中允許應用訪問攝像頭。";
-      } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+      } else if (
+        err.name === "NotFoundError" ||
+        err.name === "DevicesNotFoundError"
+      ) {
         errorMessage = "未找到攝像頭設備。請確保攝像頭已連接並正常工作。";
-      } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+      } else if (
+        err.name === "NotReadableError" ||
+        err.name === "TrackStartError"
+      ) {
         errorMessage = "攝像頭無法讀取。可能被其他應用程序佔用。";
-      } else if (err.name === "OverconstrainedError" || err.name === "ConstraintNotSatisfiedError") {
+      } else if (
+        err.name === "OverconstrainedError" ||
+        err.name === "ConstraintNotSatisfiedError"
+      ) {
         try {
           const fallbackStream = await navigator.mediaDevices.getUserMedia({
-            video: true
+            video: true,
           });
           if (videoRef.current) {
             videoRef.current.srcObject = fallbackStream;
@@ -88,10 +104,10 @@ const CameraModal = ({ isOpen, onClose, onCapture }: CameraModalProps) => {
           }
           return;
         } catch (fallbackErr) {
-          errorMessage = '無法訪問攝像頭。請檢查設備連接和權限設置。';
+          errorMessage = "無法訪問攝像頭。請檢查設備連接和權限設置。";
         }
       }
-      
+
       setError(errorMessage);
     }
   };
@@ -102,7 +118,7 @@ const CameraModal = ({ isOpen, onClose, onCapture }: CameraModalProps) => {
       detectTimerRef.current = null;
     }
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
 
@@ -150,8 +166,14 @@ const CameraModal = ({ isOpen, onClose, onCapture }: CameraModalProps) => {
 
     result.boxes.forEach((b) => {
       let color = "#888888";
-      if (b.status === "GOOD") color = "#22c55e"; // 綠色
-      else if (b.status === "TOO_CLOSE" || b.status === "TOO_FAR" || b.status === "CENTER_IT") color = "#ef4444"; // 紅色
+      if (b.status === "GOOD")
+        color = "#22c55e"; // 綠色
+      else if (
+        b.status === "TOO_CLOSE" ||
+        b.status === "TOO_FAR" ||
+        b.status === "CENTER_IT"
+      )
+        color = "#ef4444"; // 紅色
       else if (b.status === "BAD_AR") color = "#eab308"; // 黃色
 
       ctx.strokeStyle = color;
@@ -184,7 +206,7 @@ const CameraModal = ({ isOpen, onClose, onCapture }: CameraModalProps) => {
       ctx.drawImage(videoRef.current, 0, 0);
 
       const blob: Blob | null = await new Promise((resolve) =>
-        canvas.toBlob((b) => resolve(b), "image/jpeg", 0.7)
+        canvas.toBlob((b) => resolve(b), "image/jpeg", 0.7),
       );
       if (!blob) {
         return;
@@ -199,10 +221,11 @@ const CameraModal = ({ isOpen, onClose, onCapture }: CameraModalProps) => {
         const remainSec = Math.max(0, GOOD_HOLD_SECONDS - elapsedSec);
 
         goodStartTimeRef.current = start;
+        setStatusColor("#22c55e");
         setStatusText(
           remainSec > 0
             ? `偵測良好，請保持不動... (${remainSec.toFixed(1)} 秒)`
-            : "偵測良好，正在拍攝..."
+            : "偵測良好，正在拍攝...",
         );
 
         if (elapsedSec >= GOOD_HOLD_SECONDS) {
@@ -213,21 +236,27 @@ const CameraModal = ({ isOpen, onClose, onCapture }: CameraModalProps) => {
         goodStartTimeRef.current = null;
         switch (result.reason) {
           case "no_tongue":
+            setStatusColor("#ef4444");
             setStatusText("未偵測到舌頭，請張嘴並伸出舌頭對準鏡頭");
             break;
           case "not_centered":
+            setStatusColor("#eab308");
             setStatusText("舌頭不在畫面中央，請稍微調整位置");
             break;
           case "too_close":
+            setStatusColor("#f97316");
             setStatusText("太近了，請往後一點");
             break;
           case "too_far":
+            setStatusColor("#f97316");
             setStatusText("太遠了，請靠近一點");
             break;
           case "bad_aspect":
+            setStatusColor("#eab308");
             setStatusText("角度不佳，請調整頭部或鏡頭角度");
             break;
           default:
+            setStatusColor("#6b7280");
             setStatusText("正在調整中，請稍候...");
         }
       }
@@ -250,7 +279,7 @@ const CameraModal = ({ isOpen, onClose, onCapture }: CameraModalProps) => {
       const canvas = document.createElement("canvas");
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
-      
+
       const ctx = canvas.getContext("2d");
       if (ctx) {
         ctx.drawImage(videoRef.current, 0, 0);
@@ -332,7 +361,10 @@ const CameraModal = ({ isOpen, onClose, onCapture }: CameraModalProps) => {
         </div>
 
         {!error && !capturedImage && (
-          <div className="px-6 pb-2 text-center text-xs text-gray-600">
+          <div
+            className="px-6 py-3 text-center text-2xl font-semibold"
+            style={{ color: statusColor }}
+          >
             {statusText}
           </div>
         )}
@@ -368,4 +400,3 @@ const CameraModal = ({ isOpen, onClose, onCapture }: CameraModalProps) => {
 };
 
 export default CameraModal;
-
