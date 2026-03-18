@@ -5,7 +5,7 @@ from typing import Optional
 
 class Settings(BaseSettings):
     # LLM 設定
-    model_name: str = "qwen3:8b"
+    model_name: str = "llama3.1:8b" 
     ollama_base_url: str = "http://localhost:11434"
     llm_temperature: float = 0.7
     
